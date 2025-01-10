@@ -1,15 +1,10 @@
-# CyCap
-Repo for main CyCap trade community platform
+# Traecer
+Repo for main Traecer trade community platform
 
 ## Pre-requisites
-1. Pip
-2. Python3
-3. PyQt5
+1. npm
 
 ## How to run app:
-
-1. In a local terminal, run command `git clone https://github.com/dasmygame/CyCap.git` to clone repository into directory of your choosing
-2. Move into project using following command in terminal: `cd CyCap/src`
-3. Install dependencies with the following command: `pip install PyQt5`
-4. Run app with the following command: `python3 app.py`
-
+1. In your project's directory in the terminal run  `npm install` (Assuming you have already installed npm)
+2. Once npm has finished installing all dependencies run `npm run dev` to start a local web server so that you can see your changes to the code live
+3. Thant's it!

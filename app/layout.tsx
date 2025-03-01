@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/providers/theme-provider"
 import { Providers } from "./providers"
 import Header from "@/components/header"
+import AnnouncementBanner from "@/components/announcement-banner"
 
 const inter = Inter({ subsets: ['latin'] })
 // const poppins = Poppins({
@@ -14,8 +15,8 @@ const inter = Inter({ subsets: ['latin'] })
 // })
 
 export const metadata: Metadata = {
-  title: "Traecer",
-  description: "Your personal finance and investment tracker",
+  title: "Traecer - Trade Smarter, Execute Faster",
+  description: "Real-time trading platform for your community. Portfolio tracking, transparency, and one-click copy trades.",
 }
 
 export default function RootLayout({
@@ -33,6 +34,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <AnnouncementBanner />
             <Header />
             {children}
           </ThemeProvider>

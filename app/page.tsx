@@ -3,13 +3,16 @@ import { Button } from "@/components/ui/button"
 import { ChevronRight } from "lucide-react"
 import MarketOverview from "@/components/market-overview"
 import TopCommunities from "@/components/top-communities"
+import AnimatedStockLine from "@/components/AnimatedStockLine"
+import AnimatedStep from "@/components/AnimatedStep"
 
 export default function Home() {
   return (
     <main className="flex flex-col items-center">
       {/* Hero Section */}
-      <section className="flex min-h-screen w-full flex-col items-center justify-center px-4 pt-20 bg-gradient-to-b from-[#d4fcec] via-background to-background dark:from-[#052e22] dark:via-background dark:to-background">
-        <div className="flex flex-col items-center text-center max-w-4xl">
+      <section className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 pt-20 bg-gradient-to-b from-[#d4fcec] via-background to-background dark:from-[#052e22] dark:via-background dark:to-background overflow-hidden">
+        <AnimatedStockLine key={Date.now()} />
+        <div className="flex flex-col items-center text-center max-w-4xl relative z-10">
           <div className="mb-8 p-4">
             <Image
               src="/image-vzXu5LZ4AlMNOPucuouhPfuDvoholx-removebg-preview_enhanced.png"
@@ -67,19 +70,22 @@ export default function Home() {
                 title: "Create Your Account",
                 description: "Sign up in minutes with our streamlined onboarding process.",
               },
-              { title: "Connect Your Broker", description: "Seamlessly link your existing brokerage account." },
+              { 
+                title: "Connect Your Broker", 
+                description: "Seamlessly link your existing brokerage account." 
+              },
               {
                 title: "Start Trading",
                 description: "Copy top traders or execute your own strategies with one click.",
               },
             ].map((step, index) => (
-              <div key={index} className="flex flex-col items-center p-6 bg-card text-card-foreground shadow-md">
-                <div className="mb-6 bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center text-xl ">
-                  {index + 1}
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">{step.title}</h3>
-                <p className="text-muted-foreground">{step.description}</p>
-              </div>
+              <AnimatedStep
+                key={step.title}
+                index={index}
+                title={step.title}
+                description={step.description}
+                delay={index * 0.2}
+              />
             ))}
           </div>
         </div>

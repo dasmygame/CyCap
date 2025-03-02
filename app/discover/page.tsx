@@ -30,6 +30,7 @@ import {
 import {
   Slider
 } from "@/components/ui/slider"
+import { PageContainer } from "@/components/page-container"
 
 // Mock data for demonstration
 const topTraders = [
@@ -76,10 +77,10 @@ const topCommunities = [
 
 export default function DiscoverPage() {
   return (
-    <main className="container mx-auto px-4 pt-24 pb-8">
+    <PageContainer>
       {/* Header Section */}
       <div className="mb-8">
-        <h1 className="text-4xl  mb-2">Discover</h1>
+        <h1 className="text-4xl mb-2">Discover</h1>
         <p className="text-muted-foreground text-lg">
           Find top-performing traders and communities to follow
         </p>
@@ -259,6 +260,6 @@ export default function DiscoverPage() {
           </section>
         </TabsContent>
       </Tabs>
-    </main>
+    </PageContainer>
   )
 } 

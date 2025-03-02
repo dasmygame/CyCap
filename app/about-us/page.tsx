@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card"
+import { PageContainer } from "@/components/page-container"
 
 export default function AboutUsPage() {
   const team = [
@@ -25,10 +26,10 @@ export default function AboutUsPage() {
   ]
 
   return (
-    <main className="container mx-auto px-4 py-16">
+    <PageContainer>
       <div className="space-y-16">
         <section className="text-center">
-          <h1 className="text-4xl  tracking-tight mb-4">About Traecer</h1>
+          <h1 className="text-4xl tracking-tight mb-4">About Traecer</h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
             We&apos;re revolutionizing the trading experience by combining cutting-edge technology 
             with transparent, data-driven solutions. Our mission is to empower traders with 
@@ -37,7 +38,7 @@ export default function AboutUsPage() {
         </section>
 
         <section className="space-y-8">
-          <h2 className="text-3xl  text-center">Our Mission</h2>
+          <h2 className="text-3xl text-center">Our Mission</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center p-6">
               <CardContent>
@@ -67,7 +68,7 @@ export default function AboutUsPage() {
         </section>
 
         <section className="space-y-8">
-          <h2 className="text-3xl  text-center">Our Team</h2>
+          <h2 className="text-3xl text-center">Our Team</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {team.map((member, index) => (
               <Card key={index} className="text-center p-6">
@@ -86,6 +87,6 @@ export default function AboutUsPage() {
           </div>
         </section>
       </div>
-    </main>
+    </PageContainer>
   )
 } 

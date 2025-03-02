@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react'
+import { PageContainer } from "@/components/page-container"
 
 interface Position {
   symbol: string
@@ -40,7 +41,7 @@ interface PortfolioStats {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [positions, setPositions] = useState<Position[]>([])
   const [communities, setCommunities] = useState<Community[]>([])
@@ -98,30 +99,30 @@ export default function DashboardPage() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="container mx-auto p-6 pt-24">
+      <PageContainer>
         <Card>
           <CardContent className="py-10">
             <div className="text-center">Loading dashboard data...</div>
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     )
   }
 
   if (error) {
     return (
-      <div className="container mx-auto p-6 pt-24">
+      <PageContainer>
         <Card>
           <CardContent className="py-10">
             <div className="text-center text-red-600">{error}</div>
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="container mx-auto p-6 pt-24">
+    <PageContainer>
       {/* Portfolio Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
@@ -248,11 +249,11 @@ export default function DashboardPage() {
                     <div>
                       <div className="font-bold">{community.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {community.members.length.toLocaleString()} members
+                        {community.members.length} members
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline">View</Button>
+                  <Button variant="outline" size="sm">View</Button>
                 </div>
               ))}
             </div>
@@ -290,6 +291,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   )
 } 

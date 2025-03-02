@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageContainer } from "@/components/page-container"
 
 export default function FeaturesPage() {
   const features = [
@@ -21,10 +22,10 @@ export default function FeaturesPage() {
   ]
 
   return (
-    <main className="container mx-auto px-4 py-16">
+    <PageContainer>
       <div className="space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl  tracking-tight mb-4">Our Features</h1>
+          <h1 className="text-4xl tracking-tight mb-4">Our Features</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Discover the tools and capabilities that make our platform the choice of professional traders.
           </p>
@@ -46,6 +47,6 @@ export default function FeaturesPage() {
           ))}
         </div>
       </div>
-    </main>
+    </PageContainer>
   )
 } 

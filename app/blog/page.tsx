@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageContainer } from "@/components/page-container"
 
 export default function BlogPage() {
   const posts = [
@@ -29,10 +30,10 @@ export default function BlogPage() {
   ]
 
   return (
-    <main className="container mx-auto px-4 py-16">
+    <PageContainer>
       <div className="space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl  tracking-tight mb-4">Latest Insights</h1>
+          <h1 className="text-4xl tracking-tight mb-4">Latest Insights</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Stay informed with our latest articles, analysis, and trading insights.
           </p>
@@ -58,6 +59,6 @@ export default function BlogPage() {
           ))}
         </div>
       </div>
-    </main>
+    </PageContainer>
   )
 } 

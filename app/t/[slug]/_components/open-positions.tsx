@@ -1,128 +1,90 @@
 'use client'
 
+// OpenPositions component displays and manages real-time trading positions
+// It shows current open positions and updates them in real-time through Pusher websockets
+
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { ITracePosition } from '@/lib/models/TracePosition'
+import { formatCurrency, formatPercentage } from '@/lib/utils'
 
+// Interface defining a trading position
 interface Position {
-  id: string
+  id: string                 // Unique identifier for the position
   trader: {
-    name: string
-    avatar?: string
+    name: string            // Name of the trader who opened the position
+    avatar?: string        // Optional avatar URL for the trader
   }
-  symbol: string
-  type: 'long' | 'short'
-  entry: number
-  current: number
-  size: number
-  pnl: number
-  pnlPercentage: number
-  timestamp: string
+  symbol: string           // Trading pair (e.g., 'BTC/USD')
+  type: 'long' | 'short'   // Position type
+  entry: number           // Entry price
+  current: number         // Current price
+  size: number           // Position size
+  pnl: number           // Current profit/loss
+  pnlPercentage: number // Profit/loss as a percentage
+  timestamp: string     // When the position was opened
 }
 
+// Props interface for the component
 interface OpenPositionsProps {
-  traceId: string
+  traceId: string           // Unique identifier for the trace
+  initialPositions: ITracePosition[]  // Initial list of open positions
 }
 
-export function OpenPositions({ traceId }: OpenPositionsProps) {
-  // TODO: Fetch real positions from API
-  const positions: Position[] = [
-    {
-      id: '1',
-      trader: {
-        name: 'John Doe',
-        avatar: '/placeholder-avatar.jpg'
-      },
-      symbol: 'BTC/USD',
-      type: 'long',
-      entry: 65000,
-      current: 67500,
-      size: 1.5,
-      pnl: 3750,
-      pnlPercentage: 3.85,
-      timestamp: '2024-02-29T12:00:00Z'
-    },
-    {
-      id: '2',
-      trader: {
-        name: 'Jane Smith',
-        avatar: '/placeholder-avatar.jpg'
-      },
-      symbol: 'ETH/USD',
-      type: 'short',
-      entry: 3200,
-      current: 3150,
-      size: 10,
-      pnl: 500,
-      pnlPercentage: 1.56,
-      timestamp: '2024-02-29T11:30:00Z'
+export function OpenPositions({ traceId, initialPositions }: OpenPositionsProps) {
+  const [positions, setPositions] = useState<ITracePosition[]>(initialPositions)
+
+  // Fetch real-time updates
+  useEffect(() => {
+    // TODO: Implement WebSocket connection for real-time updates
+    const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001')
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.type === 'position_update' && data.traceId === traceId) {
+        setPositions(data.positions as ITracePosition[])
+      }
     }
-  ]
+
+    return () => {
+      ws.close()
+    }
+  }, [traceId])
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-medium">Open Positions</CardTitle>
+        <CardTitle>Open Positions</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[500px] pr-4">
-          <div className="space-y-4">
-            {positions.map((position) => (
-              <Card key={position.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={position.trader.avatar} />
-                        <AvatarFallback>{position.trader.name[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{position.trader.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(position.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={position.type === 'long' ? 'default' : 'destructive'}>
-                      {position.type.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Symbol</p>
-                      <p className="font-medium">{position.symbol}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Size</p>
-                      <p className="font-medium">{position.size}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Entry</p>
-                      <p className="font-medium">${position.entry.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Current</p>
-                      <p className="font-medium">${position.current.toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t pt-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Unrealized P&L</p>
-                      <p
-                        className={`text-lg font-bold ${
-                          position.pnl >= 0 ? 'text-green-500' : 'text-red-500'
-                        }`}
-                      >
-                        ${position.pnl.toLocaleString()} ({position.pnlPercentage}%)
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
+        <div className="space-y-4">
+          {positions.map((position) => (
+            <div
+              key={position._id?.toString() || position.id}
+              className="flex items-center justify-between p-4 rounded-lg border"
+            >
+              <div>
+                <div className="font-medium">{position.symbol}</div>
+                <div className="text-sm text-muted-foreground">
+                  {position.type} @ {formatCurrency(position.entry)}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={position.pnl >= 0 ? 'text-green-500' : 'text-red-500'}>
+                  {formatCurrency(position.pnl)}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {formatPercentage(position.pnlPercentage)}
+                </div>
+              </div>
+            </div>
+          ))}
+          {positions.length === 0 && (
+            <div className="text-center text-muted-foreground py-8">
+              No open positions
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

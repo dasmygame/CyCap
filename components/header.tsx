@@ -10,6 +10,7 @@ import { useSession } from 'next-auth/react'
 import { UserMenu } from './user-menu'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { buttonVariants } from '@/components/ui/button'
 
 export default function Header() {
   const { scrollY } = useScroll()
@@ -78,14 +79,28 @@ export default function Header() {
           {status === 'loading' ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
           ) : status === 'authenticated' && session?.user ? (
-            <UserMenu user={session.user} />
+            <>
+              <Link
+                href="/create-trace"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Create Trace
+              </Link>
+              <UserMenu user={session.user} />
+            </>
           ) : (
             <>
-              <Link href="/auth/sign-in" className="hidden md:inline-flex">
-                <Button variant="ghost">Log in</Button>
+              <Link
+                href="/auth/sign-in"
+                className={buttonVariants({ variant: "ghost" })}
+              >
+                Log in
               </Link>
-              <Link href="/auth/sign-up">
-                <Button className="bg-[#52d3a6] hover:bg-[#52d3a6]/90">Sign Up</Button>
+              <Link
+                href="/auth/sign-up"
+                className={buttonVariants({ variant: "default" })}
+              >
+                Sign up
               </Link>
             </>
           )}

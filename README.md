@@ -37,11 +37,18 @@ Traecer is a modern trading community platform that enables traders to track the
   - Performance metrics
   - Community engagement
 
-- 👥 **Community**
-  - Join trading communities
-  - Follow top traders
-  - Share insights and strategies
+- 🔍 **Discover**
+  - Browse and search traces
+  - Tag-based filtering
   - Real-time updates
+  - Modern, responsive interface
+
+- 📈 **Traces**
+  - Create and manage trading traces
+  - Role-based permissions (owner, moderator, member)
+  - Tag organization
+  - Performance tracking
+  - Member management
 
 - 💬 **Live Chat**
   - Real-time messaging
@@ -121,12 +128,18 @@ traecer/
 ├── app/                    # Next.js app directory
 │   ├── api/               # API routes
 │   │   ├── auth/         # Authentication endpoints
-│   │   └── chat/        # Chat endpoints
+│   │   ├── chat/         # Chat endpoints
+│   │   └── traces/       # Trace management endpoints
 │   ├── auth/             # Authentication pages
 │   ├── dashboard/        # Dashboard pages
+│   ├── discover/         # Discover page
+│   ├── t/               # Trace pages
 │   ├── components/       # Shared components
 │   └── providers/        # Context providers
 ├── lib/                  # Utility functions
+│   ├── models/          # MongoDB models
+│   ├── utils/           # Utility functions
+│   │   └── permissions.ts # Role-based permissions
 │   ├── pusher.ts        # Pusher configuration
 │   ├── redis.ts         # Redis configuration
 │   └── db.ts           # MongoDB configuration
@@ -143,6 +156,30 @@ traecer/
 - `/api/dashboard` - Dashboard data
 - `/api/communities` - Community management
 - `/api/positions` - Trading positions
+- `/api/traces` - Trace management (CRUD operations)
+- `/api/traces/[traceId]/*` - Trace-specific operations
+
+## Permissions System
+
+The platform implements a role-based permission system for traces:
+
+### Roles
+- **Owner**: Full control over trace settings and management
+- **Moderator**: Can manage members and content
+- **Member**: Can view content and create alerts
+- **None**: Public access only
+
+### Permissions by Role
+- Edit trace: Owner, Moderator
+- Delete trace: Owner
+- Manage members: Owner, Moderator
+- Manage settings: Owner
+- Create alerts: Owner, Moderator, Member
+- Delete alerts: Owner, Moderator
+- Ban members: Owner, Moderator
+- Kick members: Owner, Moderator
+- Add moderators: Owner
+- Remove moderators: Owner
 
 ## Chat Implementation
 

@@ -1,65 +1,78 @@
-import mongoose, { Schema, Document } from 'mongoose'
+import mongoose from 'mongoose'
 
-export interface ITrace extends Document {
-  name: string
+export interface ITrace extends mongoose.Document {
   slug: string
-  description: string
-  createdBy: mongoose.Types.ObjectId
+  name: string
+  description?: string
   avatar?: string
   coverImage?: string
-  members: mongoose.Types.ObjectId[]
-  moderators: mongoose.Types.ObjectId[]
-  isPublic: boolean
   tags: string[]
-  stats: {
-    memberCount: number
-    messageCount: number
-    tradeAlertCount: number
+  createdBy: mongoose.Types.ObjectId | {
+    _id: string
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
   }
-  settings: {
-    allowTradeAlerts: boolean
-    allowChat: boolean
-    requireModApproval: boolean
-  }
+  members: Array<mongoose.Types.ObjectId | {
+    _id: string
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
+  }>
+  moderators: Array<mongoose.Types.ObjectId | {
+    _id: string
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
+  }>
   createdAt: Date
   updatedAt: Date
 }
 
-const TraceSchema = new Schema<ITrace>({
-  name: { type: String, required: true },
-  slug: { type: String, required: true, unique: true },
-  description: { type: String, required: true },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  avatar: { type: String },
-  coverImage: { type: String },
-  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  moderators: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  isPublic: { type: Boolean, default: true },
-  tags: [{ type: String }],
-  stats: {
-    memberCount: { type: Number, default: 0 },
-    messageCount: { type: Number, default: 0 },
-    tradeAlertCount: { type: Number, default: 0 }
+const traceSchema = new mongoose.Schema({
+  slug: {
+    type: String,
+    required: true,
+    unique: true
   },
-  settings: {
-    allowTradeAlerts: { type: Boolean, default: true },
-    allowChat: { type: Boolean, default: true },
-    requireModApproval: { type: Boolean, default: false }
-  }
+  name: {
+    type: String,
+    required: true
+  },
+  description: String,
+  avatar: String,
+  coverImage: String,
+  tags: [String],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  members: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  moderators: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, {
   timestamps: true
 })
 
 // Create indexes
-TraceSchema.index({ name: 'text', description: 'text' })
-TraceSchema.index({ tags: 1 })
+traceSchema.index({ name: 'text', description: 'text' })
+traceSchema.index({ tags: 1 })
 
 // Ensure slug is URL-friendly
-TraceSchema.pre('save', function(next) {
+traceSchema.pre('save', function(next) {
   if (this.isModified('name') && !this.isModified('slug')) {
     this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   }
   next()
 })
 
-export const Trace = mongoose.models.Trace || mongoose.model<ITrace>('Trace', TraceSchema) 
+export const Trace = mongoose.models.Trace || mongoose.model<ITrace>('Trace', traceSchema) 

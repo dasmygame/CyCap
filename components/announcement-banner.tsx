@@ -8,16 +8,18 @@ import { usePathname } from 'next/navigation'
 export default function AnnouncementBanner() {
   const { scrollY } = useScroll()
   const pathname = usePathname()
+  
   const opacity = useTransform(scrollY, [0, 80], [1, 0])
   const height = useTransform(scrollY, [0, 80], ['40px', '0px'])
   const marginTop = useTransform(scrollY, [0, 80], ['0px', '-40px'])
+  const display = useTransform(scrollY, (value) => value >= 80 ? 'none' : 'block')
 
   // Only show on home page
   if (pathname !== '/') return null
 
   return (
     <motion.div
-      style={{ height, marginTop, opacity }}
+      style={{ height, marginTop, opacity, display }}
       className="fixed top-0 left-0 right-0 w-full bg-gradient-to-r from-primary/90 via-primary to-primary/90 text-primary-foreground overflow-hidden z-[60]"
     >
       <Link 

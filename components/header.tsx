@@ -77,7 +77,7 @@ export default function Header() {
         <div className="flex items-center gap-4">
           {status === 'loading' ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-          ) : session?.user ? (
+          ) : status === 'authenticated' && session?.user ? (
             <UserMenu user={session.user} />
           ) : (
             <>

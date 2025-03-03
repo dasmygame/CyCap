@@ -1,6 +1,7 @@
 'use client'
 
 import { signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,14 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user }: UserMenuProps) {
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await signOut({ redirect: false })
+    router.push('/')
+    router.refresh()
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="outline-none">
@@ -39,18 +48,18 @@ export function UserMenu({ user }: UserMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => window.location.href = '/dashboard'}>
+        <DropdownMenuItem onClick={() => router.push('/dashboard')}>
           <User className="mr-2 h-4 w-4" />
           Dashboard
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => window.location.href = '/settings'}>
+        <DropdownMenuItem onClick={() => router.push('/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-red-600 focus:text-red-600"
-          onClick={() => signOut({ callbackUrl: '/' })}
+          onClick={handleSignOut}
         >
           <LogOut className="mr-2 h-4 w-4" />
           Sign out

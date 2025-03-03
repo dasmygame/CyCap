@@ -5,6 +5,10 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string
+      firstName: string
+      lastName: string
+      username: string
+      avatarUrl?: string
     } & DefaultSession['user']
   }
 
@@ -13,5 +17,9 @@ declare module 'next-auth' {
     name?: string | null
     email?: string | null
     image?: string | null
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
   }
 } 

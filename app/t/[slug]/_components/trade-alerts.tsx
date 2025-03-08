@@ -5,18 +5,20 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ITraceAlert } from '@/lib/models/TraceAlert'
+import { ITraceAlert } from '@/lib/models/types'
 import { formatCurrency } from '@/lib/utils'
+
+type Alert = Omit<ITraceAlert, 'createdAt' | 'updatedAt'>
 
 // Props interface for the component
 interface TradeAlertsProps {
   traceId: string           // Unique identifier for the trace
-  initialAlerts: ITraceAlert[]  // Initial list of trade alerts
+  initialAlerts: Alert[]  // Initial list of trade alerts
 }
 
 export function TradeAlerts({ traceId, initialAlerts }: TradeAlertsProps) {
   // State for managing the list of alerts
-  const [alerts, setAlerts] = useState<ITraceAlert[]>(initialAlerts)
+  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts)
 
   // Fetch real-time updates
   useEffect(() => {
@@ -25,7 +27,7 @@ export function TradeAlerts({ traceId, initialAlerts }: TradeAlertsProps) {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.type === 'alert_update' && data.traceId === traceId) {
-        setAlerts(data.alerts as ITraceAlert[])
+        setAlerts(data.alerts as Alert[])
       }
     }
 

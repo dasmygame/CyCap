@@ -1,87 +1,69 @@
-import { ITrace } from '@/lib/models/Trace'
-import { Types } from 'mongoose'
-
-interface MongoDocument {
-  _id: Types.ObjectId | string
-  toString(): string
-}
-
 export type TraceRole = 'owner' | 'moderator' | 'member' | 'none'
 
-export function getUserTraceRole(userId: string, trace: ITrace): TraceRole {
-  if (!userId || !trace) {
-    // console.log('Debug - Early return:', { userId, hasTrace: !!trace })
-    return 'none'
+interface TraceWithMembers {
+  createdBy: { _id: string } | string
+  moderators: ({ _id: string } | string)[]
+  members: ({ _id: string } | string)[]
+}
+
+export function getUserTraceRole(userId: string, trace: TraceWithMembers | null | undefined): TraceRole {
+  if (!userId || !trace || !trace.createdBy) return 'none'
+
+  // Check if user is the owner
+  const ownerId = typeof trace.createdBy === 'string' ? trace.createdBy : trace.createdBy._id
+  if (ownerId === userId) {
+    return 'owner'
   }
 
-  // Handle createdBy field
-  if (!trace.createdBy) {
-    // console.log('Debug - No createdBy:', { trace })
-    return 'none'
+  // Check if user is a moderator
+  if (Array.isArray(trace.moderators)) {
+    const isModerator = trace.moderators.some(mod => {
+      if (!mod) return false
+      const modId = typeof mod === 'string' ? mod : mod._id
+      return modId === userId
+    })
+    if (isModerator) {
+      return 'moderator'
+    }
   }
 
-  // console.log('Debug - Checking createdBy:', {
-  //   userId,
-  //   createdBy: trace.createdBy,
-  //   type: typeof trace.createdBy,
-  //   hasToString: 'toString' in trace.createdBy,
-  //   hasId: '_id' in trace.createdBy
-  // })
-
-  const createdById = typeof trace.createdBy === 'string' ? 
-    trace.createdBy : 
-    '_id' in trace.createdBy ? trace.createdBy._id.toString() :
-    (trace.createdBy as MongoDocument).toString()
-
-  // console.log('Debug - IDs:', { userId, createdById })
-
-  if (createdById === userId) return 'owner'
-  
-  // Handle moderators array
-  // console.log('Debug - Moderators:', trace.moderators)
-
-  const moderatorIds = trace.moderators?.map(mod => 
-    typeof mod === 'string' ? mod : 
-    '_id' in mod ? mod._id.toString() :
-    (mod as MongoDocument).toString()
-  ).filter(Boolean) || []
-
-  // console.log('Debug - ModeratorIds:', moderatorIds)
-
-  if (moderatorIds.includes(userId)) return 'moderator'
-
-  // Handle members array
-  // console.log('Debug - Members:', trace.members)
-
-  const memberIds = trace.members?.map(member => 
-    typeof member === 'string' ? member : 
-    '_id' in member ? member._id.toString() :
-    (member as MongoDocument).toString()
-  ).filter(Boolean) || []
-
-  // console.log('Debug - MemberIds:', memberIds)
-
-  if (memberIds.includes(userId)) return 'member'
+  // Check if user is a member
+  if (Array.isArray(trace.members)) {
+    const isMember = trace.members.some(member => {
+      if (!member) return false
+      const memberId = typeof member === 'string' ? member : member._id
+      return memberId === userId
+    })
+    if (isMember) {
+      return 'member'
+    }
+  }
 
   return 'none'
 }
 
-export const TRACE_PERMISSIONS = {
-  editTrace: ['owner', 'moderator'],
-  deleteTrace: ['owner'],
-  manageMembers: ['owner', 'moderator'],
-  manageSettings: ['owner'],
-  createAlerts: ['owner', 'moderator', 'member'],
-  deleteAlerts: ['owner', 'moderator'],
-  banMembers: ['owner', 'moderator'],
-  kickMembers: ['owner', 'moderator'],
-  addModerators: ['owner'],
-  removeModerators: ['owner'],
-} as const
+type Permission = 
+  | 'edit'
+  | 'delete'
+  | 'manage_members'
+  | 'manage_settings'
+  | 'create_alerts'
+  | 'delete_alerts'
+  | 'ban_members'
+  | 'kick_members'
+  | 'add_moderators'
+  | 'remove_moderators'
 
-export function hasTracePermission(
-  permission: keyof typeof TRACE_PERMISSIONS,
-  role: TraceRole
-): boolean {
-  return TRACE_PERMISSIONS[permission].includes(role as any)
+export const TRACE_PERMISSIONS: Record<TraceRole, Permission[]> = {
+  owner: ['edit', 'delete', 'manage_members', 'manage_settings', 'create_alerts', 'delete_alerts', 'ban_members', 'kick_members', 'add_moderators', 'remove_moderators'],
+  moderator: ['edit', 'manage_members', 'create_alerts', 'delete_alerts', 'ban_members', 'kick_members'],
+  member: ['create_alerts'],
+  none: []
+}
+
+export function hasTracePermission(userRole: TraceRole | undefined | null, permission: Permission): boolean {
+  if (!userRole || !(userRole in TRACE_PERMISSIONS)) {
+    return false
+  }
+  return TRACE_PERMISSIONS[userRole].includes(permission)
 } 

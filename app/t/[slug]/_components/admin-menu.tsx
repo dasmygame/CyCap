@@ -11,123 +11,79 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal, Settings, UserX, Shield, Trash } from 'lucide-react'
-import { toast } from 'sonner'
-import { TraceRole, hasTracePermission } from '@/lib/utils/permissions'
+import { MoreVertical, Settings, UserX, Shield, Trash } from 'lucide-react'
+import { TraceRole } from '@/lib/utils/permissions'
 
 interface AdminMenuProps {
   traceId: string
   userRole: TraceRole
-  onAction?: () => void
 }
 
-export function AdminMenu({ traceId, userRole, onAction }: AdminMenuProps) {
+export function AdminMenu({ traceId, userRole }: AdminMenuProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleAction = async (action: string, userId?: string) => {
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this trace? This action cannot be undone.')) {
+      return
+    }
+
     try {
       setIsLoading(true)
-      let response
+      const response = await fetch(`/api/traces/${traceId}`, {
+        method: 'DELETE'
+      })
 
-      switch (action) {
-        case 'delete':
-          response = await fetch(`/api/traces/${traceId}`, {
-            method: 'DELETE',
-          })
-          if (response.ok) {
-            toast.success('Trace deleted successfully')
-            router.push('/')
-          }
-          break
-
-        case 'kick':
-          if (!userId) return
-          response = await fetch(`/api/traces/${traceId}/members/${userId}`, {
-            method: 'DELETE',
-          })
-          if (response.ok) {
-            toast.success('Member removed successfully')
-            onAction?.()
-          }
-          break
-
-        case 'ban':
-          if (!userId) return
-          response = await fetch(`/api/traces/${traceId}/bans`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId }),
-          })
-          if (response.ok) {
-            toast.success('Member banned successfully')
-            onAction?.()
-          }
-          break
-
-        case 'mod':
-          if (!userId) return
-          response = await fetch(`/api/traces/${traceId}/moderators`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId }),
-          })
-          if (response.ok) {
-            toast.success('Moderator added successfully')
-            onAction?.()
-          }
-          break
-      }
-
-      if (!response?.ok) {
-        throw new Error('Action failed')
+      if (response.ok) {
+        router.push('/discover')
       }
     } catch (error) {
-      toast.error('Something went wrong')
-      console.error('Error performing action:', error)
+      console.error('Error deleting trace:', error)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Only show menu for owners and moderators
+  if (userRole !== 'owner' && userRole !== 'moderator') {
+    return null
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" disabled={isLoading}>
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent>
         <DropdownMenuLabel>Admin Actions</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {hasTracePermission('manageSettings', userRole) && (
-          <DropdownMenuItem onClick={() => router.push(`/t/${traceId}/settings`)}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </DropdownMenuItem>
+        {userRole === 'owner' && (
+          <>
+            <DropdownMenuItem onClick={() => router.push(`/t/${traceId}/settings`)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push(`/t/${traceId}/moderators`)}>
+              <Shield className="mr-2 h-4 w-4" />
+              Manage Moderators
+            </DropdownMenuItem>
+          </>
         )}
         
-        {hasTracePermission('manageMembers', userRole) && (
-          <DropdownMenuItem onClick={() => router.push(`/t/${traceId}/members`)}>
-            <UserX className="mr-2 h-4 w-4" />
-            Manage Members
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem onClick={() => router.push(`/t/${traceId}/members`)}>
+          <UserX className="mr-2 h-4 w-4" />
+          Manage Members
+        </DropdownMenuItem>
         
-        {hasTracePermission('addModerators', userRole) && (
-          <DropdownMenuItem onClick={() => router.push(`/t/${traceId}/moderators`)}>
-            <Shield className="mr-2 h-4 w-4" />
-            Manage Moderators
-          </DropdownMenuItem>
-        )}
-        
-        {hasTracePermission('deleteTrace', userRole) && (
+        {userRole === 'owner' && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-red-600"
-              onClick={() => handleAction('delete')}
+              className="text-destructive"
+              onClick={handleDelete}
             >
               <Trash className="mr-2 h-4 w-4" />
               Delete Trace

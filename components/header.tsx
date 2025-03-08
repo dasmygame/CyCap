@@ -2,8 +2,6 @@
 
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { ModeToggle } from './mode-toggle'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -45,8 +43,8 @@ export default function Header() {
       }}
       className="fixed left-0 right-0 z-50 backdrop-blur-sm transition-colors"
     >
-      <div className="container flex h-20 items-center justify-between">
-        <div className="flex items-center gap-8">
+      <div className="container flex h-20">
+        <div className="flex flex-1 items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/image-vzXu5LZ4AlMNOPucuouhPfuDvoholx-removebg-preview_enhanced.png"
@@ -104,7 +102,6 @@ export default function Header() {
               </Link>
             </>
           )}
-          <ModeToggle />
         </div>
       </div>
     </motion.header>

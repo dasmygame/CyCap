@@ -1,6 +1,9 @@
-import { notFound } from 'next/navigation'
-import { connectDB } from '@/lib/db'
-import { Trace, ITrace } from '@/lib/models/Trace'
+'use client'
+
+import { Suspense } from 'react'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { PageContainer } from '@/components/page-container'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,157 +14,217 @@ import { OpenPositions } from './_components/open-positions'
 import { TraceAnalytics } from './_components/analytics'
 import { TradeAlerts } from './_components/trade-alerts'
 import { Members } from './_components/members'
-import { Suspense } from 'react'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import TracePosition from '@/lib/models/TracePosition'
-import TraceAlert from '@/lib/models/TraceAlert'
-import { getUserTraceRole } from '@/lib/utils/permissions'
-import { AdminMenu } from './_components/admin-menu'
-import { JoinButton } from './_components/join-button'
+import { TraceStorefront } from './_components/trace-storefront'
 import { AdminPanelButton } from './_components/admin-panel-button'
+import { AdminMenu } from './_components/admin-menu'
+import { UserSettings } from './_components/user-settings'
+import { getUserTraceRole } from '@/lib/utils/permissions'
+import type { TraceRole } from '@/lib/utils/permissions'
+import { ITracePosition, ITraceAlert, PerformanceMetrics } from '@/lib/models/types'
 
-async function getTraceData(slug: string) {
-  await connectDB()
-  
-  // Get trace data with populated references
-  const trace = await Trace.findOne({ slug })
-    .populate('createdBy', 'firstName lastName username avatarUrl')
-    .populate('members', 'firstName lastName username avatarUrl')
-    .populate('moderators', 'firstName lastName username avatarUrl')
-    .lean()
-
-  if (!trace) return null
-
-  // Cast the trace to the correct type after lean query
-  const typedTrace = trace as unknown as ITrace & { _id: string }
-
-  // Fetch positions, alerts, and calculate stats
-  const [openPositions, recentAlerts, stats, performance] = await Promise.all([
-    TracePosition.find({ traceId: typedTrace._id, status: 'open' })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean(),
-    TraceAlert.find({ traceId: typedTrace._id })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean(),
-    calculateTraceStats(typedTrace._id),
-    calculatePerformanceMetrics(typedTrace._id)
-  ])
-
-  // Serialize MongoDB objects and add computed stats
-  return {
-    ...JSON.parse(JSON.stringify(typedTrace)),
-    openPositions,
-    recentAlerts,
-    stats: {
-      ...stats,
-      memberCount: typedTrace.members.length,
-      tradeAlertCount: await TraceAlert.countDocuments({ traceId: typedTrace._id }),
-      messageCount: 0 // TODO: Implement message count
-    },
-    performance
+interface TraceData {
+  _id: string
+  slug: string
+  name: string
+  description: string
+  price: number
+  features: string[]
+  coverImage?: string
+  avatar?: string
+  tags: string[]
+  createdBy: {
+    _id: string
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
   }
+  stats: {
+    memberCount: number
+    tradeAlertCount: number
+    messageCount: number
+    totalTrades: number
+    winRate: number
+    profitFactor: number
+    averageRR: number
+    totalPnL: number
+    bestTrade: number
+    worstTrade: number
+    averageDuration: string
+  }
+  openPositions: Omit<ITracePosition, 'performance' | 'risk' | 'metadata'>[]
+  recentAlerts: Omit<ITraceAlert, 'createdAt' | 'updatedAt'>[]
+  performance: PerformanceMetrics
+  members: {
+    _id: string
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
+  }[]
+  moderators: {
+    _id: string
+    firstName: string
+    lastName: string
+    username: string
+    avatarUrl?: string
+  }[]
+  createdAt: Date
+  updatedAt: Date
 }
 
-// Helper function to calculate trace statistics
-async function calculateTraceStats(traceId: string) {
-  const positions = await TracePosition.find({ traceId })
-  
-  const stats = {
-    totalTrades: positions.length,
-    winRate: 0,
-    profitFactor: 0,
-    averageRR: 0,
-    totalPnL: 0,
-    bestTrade: 0,
-    worstTrade: 0,
-    averageDuration: '0h 0m'
-  }
+export default function TracePage({ params }: { params: { slug: string } }) {
+  const router = useRouter()
+  const { data: session } = useSession()
+  const [trace, setTrace] = useState<TraceData | null>(null)
+  const [isMember, setIsMember] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  if (positions.length > 0) {
-    const winners = positions.filter(p => p.pnl > 0)
-    const losers = positions.filter(p => p.pnl < 0)
-    
-    stats.winRate = (winners.length / positions.length) * 100
-    stats.totalPnL = positions.reduce((sum, p) => sum + p.pnl, 0)
-    stats.bestTrade = Math.max(...positions.map(p => p.pnl))
-    stats.worstTrade = Math.min(...positions.map(p => p.pnl))
-    
-    const totalWins = winners.reduce((sum, p) => sum + p.pnl, 0)
-    const totalLosses = Math.abs(losers.reduce((sum, p) => sum + p.pnl, 0))
-    stats.profitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins
+  // Fetch trace data
+  useEffect(() => {
+    const fetchTrace = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch(`/api/traces/${params.slug}/membership`)
+        const data = await response.json()
+        
+        if (!data.trace) {
+          console.error('Trace not found')
+          setTrace(null)
+          return
+        }
 
-    const totalR = positions.reduce((sum, p) => sum + (p.performance.r || 0), 0)
-    stats.averageRR = totalR / positions.length
+        // Initialize missing arrays to prevent undefined errors
+        const trace = {
+          ...data.trace,
+          moderators: data.trace.moderators || [],
+          members: data.trace.members || [],
+          features: data.trace.features || [
+            'Access to live chat and community',
+            'Real-time trade alerts',
+            'Performance analytics',
+            'Open positions tracking',
+            'Direct communication with trace owner'
+          ],
+          tags: data.trace.tags || [],
+          openPositions: data.trace.openPositions || [],
+          recentAlerts: data.trace.recentAlerts || [],
+          stats: {
+            memberCount: data.trace.stats?.memberCount || 0,
+            tradeAlertCount: data.trace.stats?.tradeAlertCount || 0,
+            messageCount: data.trace.stats?.messageCount || 0,
+            totalTrades: data.trace.stats?.totalTrades || 0,
+            winRate: data.trace.stats?.winRate || 0,
+            profitFactor: data.trace.stats?.profitFactor || 0,
+            averageRR: data.trace.stats?.averageRR || 0,
+            totalPnL: data.trace.stats?.totalPnL || 0,
+            bestTrade: data.trace.stats?.bestTrade || 0,
+            worstTrade: data.trace.stats?.worstTrade || 0,
+            averageDuration: data.trace.stats?.averageDuration || '0'
+          },
+          performance: data.trace.performance || {
+            daily: { trades: 0, pnl: 0, winRate: 0 },
+            weekly: { trades: 0, pnl: 0, winRate: 0 },
+            monthly: { trades: 0, pnl: 0, winRate: 0 }
+          }
+        }
+        
+        setTrace(trace)
+        setIsMember(data.isMember || false)
+      } catch (error) {
+        console.error('Error fetching trace:', error)
+        setTrace(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-    const avgDurationMs = positions.reduce((sum, p) => sum + (p.performance.duration || 0), 0) / positions.length
-    const hours = Math.floor(avgDurationMs / (1000 * 60 * 60))
-    const minutes = Math.floor((avgDurationMs % (1000 * 60 * 60)) / (1000 * 60))
-    stats.averageDuration = `${hours}h ${minutes}m`
-  }
+    fetchTrace()
+  }, [session, params.slug])
 
-  return stats
-}
+  const handleJoin = async (tierId?: string) => {
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
 
-// Helper function to calculate performance metrics
-async function calculatePerformanceMetrics(traceId: string) {
-  const now = new Date()
-  const dayStart = new Date(now.setHours(0,0,0,0))
-  const weekStart = new Date(now.setDate(now.getDate() - now.getDay()))
-  const monthStart = new Date(now.setDate(1))
+    try {
+      const response = await fetch(`/api/traces/${params.slug}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tierId })
+      })
 
-  const [dailyPositions, weeklyPositions, monthlyPositions] = await Promise.all([
-    TracePosition.find({ traceId, createdAt: { $gte: dayStart } }),
-    TracePosition.find({ traceId, createdAt: { $gte: weekStart } }),
-    TracePosition.find({ traceId, createdAt: { $gte: monthStart } })
-  ])
-
-  return {
-    daily: {
-      trades: dailyPositions.length,
-      pnl: dailyPositions.reduce((sum, p) => sum + p.pnl, 0),
-      winRate: dailyPositions.length > 0 ? 
-        (dailyPositions.filter(p => p.pnl > 0).length / dailyPositions.length) * 100 : 0
-    },
-    weekly: {
-      trades: weeklyPositions.length,
-      pnl: weeklyPositions.reduce((sum, p) => sum + p.pnl, 0),
-      winRate: weeklyPositions.length > 0 ?
-        (weeklyPositions.filter(p => p.pnl > 0).length / weeklyPositions.length) * 100 : 0
-    },
-    monthly: {
-      trades: monthlyPositions.length,
-      pnl: monthlyPositions.reduce((sum, p) => sum + p.pnl, 0),
-      winRate: monthlyPositions.length > 0 ?
-        (monthlyPositions.filter(p => p.pnl > 0).length / monthlyPositions.length) * 100 : 0
+      const data = await response.json()
+      
+      if (data.success) {
+        setIsMember(true)
+        // Refresh the page to get updated data
+        router.refresh()
+      } else {
+        console.error('Failed to join:', data.error)
+      }
+    } catch (error) {
+      console.error('Error joining trace:', error)
     }
   }
-}
 
-export default async function TracePage({ params }: { params: { slug: string } }) {
-  const session = await getServerSession(authOptions)
-  const trace = await getTraceData(params.slug)
-
-  if (!trace || !session) {
-    notFound()
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      </PageContainer>
+    )
   }
 
-  // console.log('Debug - Session user:', { //verbose output to see what is in the session
-  //   id: session.user.id,
-  //   name: session.user.name
-  // })
-  
-  // console.log('Debug - Trace data:', {
-  //   createdBy: trace.createdBy,
-  //   moderators: trace.moderators,
-  //   members: trace.members
-  // })
+  if (!trace) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold">Trace Not Found</h2>
+            <p className="text-muted-foreground">The trace you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          </div>
+        </div>
+      </PageContainer>
+    )
+  }
 
-  const userRole = getUserTraceRole(session.user.id, trace)
-  // console.log('Debug - User role:', userRole)
+  const userRole: TraceRole = session?.user ? getUserTraceRole(session.user.id, trace) : 'none'
 
+  // Show storefront for non-members
+  if (!isMember) {
+    return (
+      <PageContainer>
+        <TraceStorefront 
+          trace={{
+            name: trace.name,
+            description: trace.description,
+            features: trace.features,
+            coverImage: trace.coverImage,
+            avatar: trace.avatar,
+            stats: {
+              memberCount: trace.stats.memberCount,
+              tradeAlertCount: trace.stats.tradeAlertCount,
+              winRate: trace.stats.winRate,
+              profitFactor: trace.stats.profitFactor
+            },
+            owner: {
+              name: `${trace.createdBy.firstName} ${trace.createdBy.lastName}`,
+              avatarUrl: trace.createdBy.avatarUrl
+            }
+          }}
+          onJoin={handleJoin}
+        />
+      </PageContainer>
+    )
+  }
+
+  // Show member content
   return (
     <PageContainer>
       <div className="space-y-6">
@@ -198,19 +261,14 @@ export default async function TracePage({ params }: { params: { slug: string } }
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Show join/leave button based on actual membership status */}
-                    <JoinButton 
-                      traceId={trace._id.toString()} 
-                      isMember={userRole !== 'none'}
-                      userRole={userRole}
-                    />
-                    
+                    {/* Show settings menu for all members */}
+                    <UserSettings traceId={trace._id} userRole={userRole} />
                     {/* Show admin panel button and menu for owners and moderators */}
                     {(userRole === 'owner' || userRole === 'moderator') && (
                       <>
                         <AdminPanelButton slug={params.slug} />
                         <AdminMenu 
-                          traceId={trace._id.toString()} 
+                          traceId={trace._id} 
                           userRole={userRole}
                         />
                       </>
@@ -266,13 +324,13 @@ export default async function TracePage({ params }: { params: { slug: string } }
           </TabsList>
 
           <TabsContent value="chat" className="space-y-4">
-            <LiveChat traceId={trace._id.toString()} />
+            <LiveChat traceId={trace._id} />
           </TabsContent>
 
           <TabsContent value="positions" className="space-y-4">
             <Suspense fallback={<div>Loading positions...</div>}>
               <OpenPositions 
-                traceId={trace._id.toString()}
+                traceId={trace._id}
                 initialPositions={trace.openPositions}
               />
             </Suspense>
@@ -281,7 +339,7 @@ export default async function TracePage({ params }: { params: { slug: string } }
           <TabsContent value="alerts" className="space-y-4">
             <Suspense fallback={<div>Loading alerts...</div>}>
               <TradeAlerts 
-                traceId={trace._id.toString()}
+                traceId={trace._id}
                 initialAlerts={trace.recentAlerts}
               />
             </Suspense>
@@ -290,7 +348,7 @@ export default async function TracePage({ params }: { params: { slug: string } }
           <TabsContent value="analytics" className="space-y-4">
             <Suspense fallback={<div>Loading analytics...</div>}>
               <TraceAnalytics 
-                traceId={trace._id.toString()}
+                traceId={trace._id}
                 initialStats={trace.stats}
                 initialPerformance={trace.performance}
               />

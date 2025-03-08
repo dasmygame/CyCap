@@ -2,7 +2,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ChevronRight } from "lucide-react"
 import MarketOverview from "@/components/market-overview"
-import TopCommunities from "@/components/top-communities"
+import TopTraces from "@/components/top-traces"
 import AnimatedStockLine from "@/components/AnimatedStockLine"
 import AnimatedStep from "@/components/AnimatedStep"
 
@@ -49,11 +49,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Top Performing Communities Section */}
+      {/* Top Performing Traces Section */}
       <section className="w-full py-16 bg-accent/20 dark:bg-accent/5">
         <div className="container">
-          <h2 className="text-3xl mb-8 text-center">Top Performing Communities</h2>
-          <TopCommunities />
+          <h2 className="text-3xl mb-8 text-center">Top Performing Traces</h2>
+          <TopTraces />
         </div>
       </section>
 

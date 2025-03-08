@@ -1,10 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import { LogOut } from 'lucide-react'
 import { TraceRole } from '@/lib/utils/permissions'
 
 interface JoinButtonProps {
@@ -14,56 +10,34 @@ interface JoinButtonProps {
 }
 
 export function JoinButton({ traceId, isMember, userRole }: JoinButtonProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleAction = async () => {
+  const handleLeave = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch(`/api/traces/${traceId}/members`, {
-        method: isMember ? 'DELETE' : 'POST',
+      const response = await fetch(`/api/traces/${traceId}/leave`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       })
 
-      if (!response.ok) {
-        throw new Error(isMember ? 'Failed to leave trace' : 'Failed to join trace')
+      if (response.ok) {
+        window.location.reload()
       }
-
-      toast.success(isMember ? 'Successfully left trace' : 'Successfully joined trace')
-      router.refresh()
     } catch (error) {
-      toast.error(isMember ? 'Failed to leave trace' : 'Failed to join trace')
-      console.error(error)
-    } finally {
-      setIsLoading(false)
+      console.error('Error leaving trace:', error)
     }
   }
 
-  // Don't show leave button for owners
-  if (isMember && userRole === 'owner') {
+  // Don't render anything for owners
+  if (userRole === 'owner') {
     return null
-  }
-
-  if (isMember) {
-    return (
-      <Button 
-        onClick={handleAction}
-        disabled={isLoading}
-        variant="outline"
-        size="sm"
-      >
-        <LogOut className="h-4 w-4 mr-2" />
-        {isLoading ? 'Leaving...' : 'Leave Trace'}
-      </Button>
-    )
   }
 
   return (
     <Button 
-      onClick={handleAction}
-      disabled={isLoading}
-      size="sm"
+      variant={isMember ? "destructive" : "default"}
+      onClick={isMember ? handleLeave : undefined}
     >
-      {isLoading ? 'Joining...' : 'Join Trace'}
+      {isMember ? 'Leave' : 'Join'}
     </Button>
   )
 } 

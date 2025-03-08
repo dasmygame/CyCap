@@ -8,7 +8,7 @@ import { Types } from 'mongoose'
 
 export async function POST(
   req: Request,
-  { params }: { params: { traceId: string } }
+  { params }: { params: { slug: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,7 +23,7 @@ export async function POST(
 
     await connectDB()
 
-    const trace = await Trace.findById(params.traceId)
+    const trace = await Trace.findOne({ slug: params.slug })
     if (!trace) {
       return new NextResponse('Trace not found', { status: 404 })
     }

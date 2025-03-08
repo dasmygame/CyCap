@@ -5,34 +5,19 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ITracePosition } from '@/lib/models/TracePosition'
+import { ITracePosition } from '@/lib/models/types'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 
-// Interface defining a trading position
-interface Position {
-  id: string                 // Unique identifier for the position
-  trader: {
-    name: string            // Name of the trader who opened the position
-    avatar?: string        // Optional avatar URL for the trader
-  }
-  symbol: string           // Trading pair (e.g., 'BTC/USD')
-  type: 'long' | 'short'   // Position type
-  entry: number           // Entry price
-  current: number         // Current price
-  size: number           // Position size
-  pnl: number           // Current profit/loss
-  pnlPercentage: number // Profit/loss as a percentage
-  timestamp: string     // When the position was opened
-}
+type Position = Omit<ITracePosition, 'performance' | 'risk' | 'metadata'>
 
 // Props interface for the component
 interface OpenPositionsProps {
   traceId: string           // Unique identifier for the trace
-  initialPositions: ITracePosition[]  // Initial list of open positions
+  initialPositions: Position[]  // Initial list of open positions
 }
 
 export function OpenPositions({ traceId, initialPositions }: OpenPositionsProps) {
-  const [positions, setPositions] = useState<ITracePosition[]>(initialPositions)
+  const [positions, setPositions] = useState<Position[]>(initialPositions)
 
   // Fetch real-time updates
   useEffect(() => {
@@ -42,7 +27,7 @@ export function OpenPositions({ traceId, initialPositions }: OpenPositionsProps)
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.type === 'position_update' && data.traceId === traceId) {
-        setPositions(data.positions as ITracePosition[])
+        setPositions(data.positions as Position[])
       }
     }
 

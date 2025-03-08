@@ -1,22 +1,56 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { CalendarIcon } from "lucide-react"
+import dynamic from 'next/dynamic'
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+
+// Dynamically import heavy components
+const Calendar = dynamic(() => import("@/components/ui/calendar").then(mod => mod.Calendar), {
+  loading: () => <div className="h-[240px] w-full animate-pulse rounded-lg bg-muted" />,
+  ssr: false
+})
+
+const Popover = dynamic(() => import("@/components/ui/popover").then(mod => mod.Popover))
+const PopoverContent = dynamic(() => import("@/components/ui/popover").then(mod => mod.PopoverContent))
+const PopoverTrigger = dynamic(() => import("@/components/ui/popover").then(mod => mod.PopoverTrigger))
+
+// Split the form into smaller components
+const PersonalInfoFields = dynamic(() => import('./_components/personal-info-fields'), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="h-[70px] animate-pulse rounded-lg bg-muted" />
+        <div className="h-[70px] animate-pulse rounded-lg bg-muted" />
+      </div>
+    </div>
+  )
+})
+
+const ContactInfoFields = dynamic(() => import('./_components/contact-info-fields'), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="h-[70px] animate-pulse rounded-lg bg-muted" />
+      <div className="h-[70px] animate-pulse rounded-lg bg-muted" />
+    </div>
+  )
+})
+
+const PasswordFields = dynamic(() => import('./_components/password-fields'), {
+  loading: () => (
+    <div className="grid grid-cols-2 gap-4">
+      <div className="h-[70px] animate-pulse rounded-lg bg-muted" />
+      <div className="h-[70px] animate-pulse rounded-lg bg-muted" />
+    </div>
+  )
+})
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -133,162 +167,49 @@ export default function SignUpPage() {
               </Alert>
             )}
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  placeholder="John"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-              </div>
+            <Suspense fallback={<div className="h-[70px] animate-pulse rounded-lg bg-muted" />}>
+              <PersonalInfoFields formData={formData} handleChange={handleChange} />
+            </Suspense>
 
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  placeholder="Doe"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-              </div>
+            <Suspense fallback={<div className="h-[70px] animate-pulse rounded-lg bg-muted" />}>
+              <ContactInfoFields formData={formData} handleChange={handleChange} />
+            </Suspense>
+
+            <div className="space-y-2">
+              <Label>Birth Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    disabled={(date: Date) => {
+                      const today = new Date()
+                      const minDate = new Date()
+                      minDate.setFullYear(today.getFullYear() - 120) // Max age 120 years
+                      return date > today || date < minDate
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  type="text"
-                  placeholder="johndoe"
-                  required
-                  value={formData.username}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Birth Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      disabled={(date) => {
-                        const today = new Date()
-                        const minDate = new Date()
-                        minDate.setFullYear(today.getFullYear() - 120) // Max age 120 years
-                        return date > today || date < minDate
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
-                  placeholder="+1 (555) 000-0000"
-                  required
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="occupation">Occupation</Label>
-                <Input
-                  id="occupation"
-                  name="occupation"
-                  type="text"
-                  placeholder="Software Engineer"
-                  required
-                  value={formData.occupation}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="annualIncome">Annual Income</Label>
-                <Input
-                  id="annualIncome"
-                  name="annualIncome"
-                  type="text"
-                  placeholder="50,000"
-                  required
-                  value={formData.annualIncome}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+            <Suspense fallback={<div className="h-[70px] animate-pulse rounded-lg bg-muted" />}>
+              <PasswordFields formData={formData} handleChange={handleChange} />
+            </Suspense>
 
             <Button 
               type="submit" 

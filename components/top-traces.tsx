@@ -92,85 +92,88 @@ export default function TopTraces() {
         const formattedReturn = ((trace.avgMonthlyReturn || 0) * 100).toFixed(1)
 
         return (
-          <Link href={`/t/${trace.slug}`} key={trace._id}>
-            <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={trace.avatar} />
-                  <AvatarFallback>{trace.name[0]}</AvatarFallback>
-                </Avatar>
-                <CardTitle className="text-base font-semibold line-clamp-1">
-                  {trace.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Performance Chart */}
-                <div className="h-[120px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke={positiveReturn ? 'hsl(var(--success))' : 'hsl(var(--destructive))'}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <XAxis dataKey="month" hide />
-                      <YAxis hide />
-                      <Tooltip 
-                        content={({ payload }) => {
-                          if (!payload?.length) return null
-                          const value = payload[0]?.value
-                          if (typeof value !== 'number') return null
-                          return (
-                            <div className="rounded-lg bg-background/95 p-2 shadow-md border">
-                              <p className="text-sm font-medium">
-                                {value > 0 ? '+' : ''}
-                                {(value * 100).toFixed(2)}%
-                              </p>
-                            </div>
-                          )
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+          <Card 
+            key={trace._id}
+            className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+          >
+            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={trace.avatar} />
+                <AvatarFallback>{trace.name[0]}</AvatarFallback>
+              </Avatar>
+              <CardTitle className="text-base font-semibold line-clamp-1">
+                {trace.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Performance Chart */}
+              <div className="h-[120px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={positiveReturn ? 'hsl(var(--success))' : 'hsl(var(--destructive))'}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <XAxis dataKey="month" hide />
+                    <YAxis hide />
+                    <Tooltip 
+                      content={({ payload }) => {
+                        if (!payload?.length) return null
+                        const value = payload[0]?.value
+                        if (typeof value !== 'number') return null
+                        return (
+                          <div className="rounded-lg bg-background/95 p-2 shadow-md border">
+                            <p className="text-sm font-medium">
+                              {value > 0 ? '+' : ''}
+                              {(value * 100).toFixed(2)}%
+                            </p>
+                          </div>
+                        )
+                      }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
 
-                {/* Stats */}
-                <div className="space-y-3">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-muted-foreground">Monthly Return</span>
-                    <span className={cn(
-                      "text-lg font-bold tabular-nums",
-                      positiveReturn ? "text-success" : "text-destructive"
-                    )}>
-                      {positiveReturn ? '+' : ''}{formattedReturn}%
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-muted-foreground">Win Rate</span>
-                    <span className="text-lg font-bold tabular-nums">
-                      {((trace.avgWinRate || 0) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-muted-foreground">Members</span>
-                    <span className="text-lg font-bold tabular-nums">
-                      {(trace.stats?.memberCount || 0).toLocaleString()}
-                    </span>
-                  </div>
+              {/* Stats */}
+              <div className="space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">Monthly Return</span>
+                  <span className={cn(
+                    "text-lg font-bold tabular-nums",
+                    positiveReturn ? "text-success" : "text-destructive"
+                  )}>
+                    {positiveReturn ? '+' : ''}{formattedReturn}%
+                  </span>
                 </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">Win Rate</span>
+                  <span className="text-lg font-bold tabular-nums">
+                    {((trace.avgWinRate || 0) * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">Members</span>
+                  <span className="text-lg font-bold tabular-nums">
+                    {(trace.stats?.memberCount || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
 
-                {/* CTA Button */}
-                <Button className="w-full group-hover:bg-primary/90" asChild>
-                  <Link href={`/t/${trace.slug}`}>
+              {/* CTA Button */}
+              <div className="mt-4">
+                <Link href={`/t/${trace.slug}`} className="w-full">
+                  <Button className="w-full group-hover:bg-primary/90">
                     View Trace
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </Link>
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         )
       })}
     </div>

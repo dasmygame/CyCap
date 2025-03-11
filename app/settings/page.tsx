@@ -88,7 +88,35 @@ interface UserSettings {
     communityUpdates: boolean
     marketNews: boolean
   }
+  snapTrade: {
+    userId: string
+    userSecret: string
+    registeredAt: Date
+    brokerConnections: Array<{
+      accountId: string
+      authorizationId: string
+      brokerName: string
+      accountName: string
+      status: string
+    }>
+  }
 }
+
+const BROKERS = [
+  { name: 'Alpaca', slug: 'ALPACA', region: 'US' },
+  { name: 'Coinbase', slug: 'COINBASE', region: 'International' },
+  { name: 'E*Trade', slug: 'ETRADE', region: 'US' },
+  { name: 'Fidelity', slug: 'FIDELITY', region: 'US' },
+  { name: 'Interactive Brokers', slug: 'INTERACTIVE-BROKERS-FLEX', region: 'International' },
+  { name: 'Kraken', slug: 'KRAKEN', region: 'International' },
+  { name: 'Robinhood', slug: 'ROBINHOOD', region: 'US' },
+  { name: 'Charles Schwab', slug: 'SCHWAB', region: 'US' },
+  { name: 'TradeStation', slug: 'TRADESTATION', region: 'US' },
+  { name: 'Tradier', slug: 'TRADIER', region: 'US' },
+  { name: 'Trading212', slug: 'TRADING212', region: 'UK, EU, International' },
+  { name: 'Vanguard', slug: 'VANGUARD', region: 'US' },
+  { name: 'Webull', slug: 'WEBULL', region: 'US' },
+] as const;
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -136,7 +164,24 @@ export default function SettingsPage() {
         const response = await fetch('/api/settings')
         if (!response.ok) throw new Error('Failed to fetch settings')
         const data = await response.json()
+        console.log('Fetched settings:', data)
+        console.log('SnapTrade data:', data.snapTrade)
         setSettings(data)
+        
+        // If user has SnapTrade configured, fetch latest connections
+        if (data.snapTrade?.userId) {
+          const connectionsResponse = await fetch('/api/snaptrade/connections')
+          if (connectionsResponse.ok) {
+            const { connections } = await connectionsResponse.json()
+            setSettings(prev => prev ? {
+              ...prev,
+              snapTrade: {
+                ...prev.snapTrade,
+                brokerConnections: connections
+              }
+            } : null)
+          }
+        }
         
         // Update form default values with fetched data
         profileForm.reset({
@@ -400,15 +445,15 @@ export default function SettingsPage() {
                         <div>
                           <h3 className="font-medium">{label}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {settings?.social[platform as SocialPlatform]?.verified 
-                              ? `Connected as ${settings.social[platform as SocialPlatform].username}`
+                            {settings?.social?.[platform as SocialPlatform]?.verified 
+                              ? `Connected as ${settings?.social?.[platform as SocialPlatform]?.username || ''}`
                               : 'Not connected'}
                           </p>
                         </div>
                         <Button
-                          variant={settings?.social[platform as SocialPlatform]?.verified ? "destructive" : "default"}
+                          variant={settings?.social?.[platform as SocialPlatform]?.verified ? "destructive" : "default"}
                           onClick={async () => {
-                            if (settings?.social[platform as SocialPlatform]?.verified) {
+                            if (settings?.social?.[platform as SocialPlatform]?.verified) {
                               // Disconnect account
                               const response = await fetch('/api/settings/social/disconnect', {
                                 method: 'POST',
@@ -449,7 +494,7 @@ export default function SettingsPage() {
                             }
                           }}
                         >
-                          {settings?.social[platform as SocialPlatform]?.verified ? 'Disconnect' : 'Connect'}
+                          {settings?.social?.[platform as SocialPlatform]?.verified ? 'Disconnect' : 'Connect'}
                         </Button>
                       </div>
                     ))}
@@ -464,15 +509,15 @@ export default function SettingsPage() {
                       <div key={platform}>
                         <h3 className="font-medium">{label}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {settings?.social[platform as SocialPlatform]?.verified 
+                          {settings?.social?.[platform as SocialPlatform]?.verified 
                             ? (
                               <a 
-                                href={settings?.social[platform as SocialPlatform]?.profileUrl || '#'}
+                                href={settings?.social?.[platform as SocialPlatform]?.profileUrl || '#'}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-primary hover:underline"
                               >
-                                {settings?.social[platform as SocialPlatform]?.username}
+                                {settings?.social?.[platform as SocialPlatform]?.username}
                               </a>
                             )
                             : 'Not connected'
@@ -496,20 +541,136 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="grid gap-6">
-                    {["Robinhood", "TD Ameritrade", "E*TRADE", "Webull", "Interactive Brokers"].map((broker) => (
-                      <div key={broker} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <h3 className="font-medium">{broker}</h3>
-                          <p className="text-sm text-muted-foreground">Not connected</p>
-                        </div>
-                        <Button variant="outline">Connect</Button>
+                  {!settings?.snapTrade?.userId && (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground mb-4">
+                        To connect your brokerage accounts, you first need to register with SnapTrade.
+                      </p>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/snaptrade/register', {
+                              method: 'POST',
+                            })
+                            
+                            if (!response.ok) {
+                              throw new Error('Failed to register with SnapTrade')
+                            }
+                            
+                            const { redirectUrl } = await response.json()
+                            if (redirectUrl) {
+                              window.location.href = redirectUrl
+                            } else {
+                              window.location.reload()
+                            }
+                          } catch (error) {
+                            console.error('Error registering with SnapTrade:', error)
+                            toast.error('Failed to register with SnapTrade')
+                          }
+                        }}
+                      >
+                        Register with SnapTrade
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {settings?.snapTrade?.userId && (
+                    <div className="space-y-6">
+                      <div className="grid gap-4">
+                        {BROKERS.map((broker) => {
+                          // Find if user has this broker connected
+                          const connection = settings.snapTrade.brokerConnections?.find(
+                            conn => conn.brokerName.toUpperCase() === broker.slug
+                          );
+
+                          return (
+                            <div key={broker.slug} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div>
+                                <h3 className="font-medium">{broker.name}</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {broker.region}
+                                  {connection && ` • ${connection.accountName}`}
+                                </p>
+                              </div>
+                              <Button
+                                variant={connection ? "destructive" : "outline"}
+                                onClick={async () => {
+                                  if (connection) {
+                                    try {
+                                      const response = await fetch('/api/snaptrade/disconnect', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          authorizationId: connection.authorizationId,
+                                        }),
+                                      })
+                                      
+                                      if (!response.ok) {
+                                        throw new Error('Failed to disconnect account')
+                                      }
+                                      
+                                      // Refresh the connections list
+                                      const connectionsResponse = await fetch('/api/snaptrade/connections')
+                                      if (connectionsResponse.ok) {
+                                        const { connections } = await connectionsResponse.json()
+                                        setSettings(prev => prev ? {
+                                          ...prev,
+                                          snapTrade: {
+                                            ...prev.snapTrade,
+                                            brokerConnections: connections
+                                          }
+                                        } : null)
+                                        toast.success('Successfully disconnected account')
+                                      }
+                                    } catch (error) {
+                                      console.error('Error disconnecting account:', error)
+                                      toast.error('Failed to disconnect account')
+                                    }
+                                  } else {
+                                    try {
+                                      const response = await fetch('/api/snaptrade/connect', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          broker: broker.slug,
+                                          immediateRedirect: true,
+                                          customRedirect: `${window.location.origin}/settings?tab=brokers`
+                                        }),
+                                      })
+                                      
+                                      if (!response.ok) {
+                                        throw new Error('Failed to get connection URL')
+                                      }
+                                      
+                                      const { redirectUrl } = await response.json()
+                                      if (redirectUrl) {
+                                        window.location.href = redirectUrl
+                                      } else {
+                                        toast.error('No redirect URL received')
+                                      }
+                                    } catch (error) {
+                                      console.error('Error connecting account:', error)
+                                      toast.error('Failed to connect account')
+                                    }
+                                  }
+                                }}
+                              >
+                                {connection ? 'Disconnect' : 'Connect'}
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Powered by SnapTrade. Your credentials are never stored on our servers.
-                  </div>
+                      
+                      <div className="text-sm text-muted-foreground">
+                        Powered by SnapTrade. Your credentials are never stored on our servers.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

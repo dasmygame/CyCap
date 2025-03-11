@@ -102,6 +102,14 @@ export default function SignUpPage() {
       setIsLoading(false)
       return
     }
+    
+    //Username Check Function
+    
+    // if(username exists in database) {
+    //   setError('Username already exists')
+    //   setIsLoading(false)
+    //   return
+    // }
 
     try {
       const res = await fetch('/api/auth/signup', {

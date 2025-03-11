@@ -39,7 +39,13 @@ export function SidebarNav({ className }: SidebarNavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [traces, setTraces] = useState<Trace[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
+
+  // Handle mounting state
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const fetchTraces = async () => {
@@ -57,6 +63,23 @@ export function SidebarNav({ className }: SidebarNavProps) {
 
     fetchTraces()
   }, [])
+
+  // Prevent hydration mismatch by not rendering theme-dependent elements until mounted
+  if (!mounted) {
+    return (
+      <div className="fixed left-0 top-[calc(64px+4rem)] h-[calc(100vh-64px-8rem)] z-50">
+        <div className={cn(
+          'group relative flex flex-col rounded-r-2xl border border-l-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 shadow-[4px_0_16px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out h-full',
+          isCollapsed ? 'w-[60px]' : 'w-[240px]',
+          className
+        )}>
+          <div className="animate-pulse">
+            <Skeleton className="h-full w-full" />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const mainNavItems = [
     {
@@ -182,16 +205,22 @@ export function SidebarNav({ className }: SidebarNavProps) {
               {!isCollapsed && <span>Dark Mode</span>}
             </div>
             {isCollapsed ? (
-              theme === 'dark' ? (
-                <Moon className="h-4 w-4" />
-              ) : (
-                <Sun className="h-4 w-4" />
-              )
+              <button 
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-1 hover:bg-accent rounded-md"
+              >
+                {theme === 'dark' ? (
+                  <Moon className="h-4 w-4" />
+                ) : (
+                  <Sun className="h-4 w-4" />
+                )}
+              </button>
             ) : (
               <div className="flex items-center gap-2">
                 <Switch
                   checked={theme === 'dark'}
                   onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                  aria-label="Toggle dark mode"
                 />
                 {theme === 'dark' ? (
                   <Moon className="h-4 w-4" />

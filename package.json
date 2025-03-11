@@ -49,6 +49,7 @@
     "react-hook-form": "^7.54.2",
     "recharts": "^2.15.1",
     "redis": "^4.7.0",
+    "snaptrade-typescript-sdk": "^9.0.85",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.1",

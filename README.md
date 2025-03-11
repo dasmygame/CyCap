@@ -204,6 +204,85 @@ Ensure all required environment variables are set:
 - Redis configuration
 - MongoDB connection string
 
+## SnapTrade Integration
+
+The platform integrates with SnapTrade to enable users to connect and manage their brokerage accounts:
+
+### Features
+- Connect multiple brokerage accounts
+- View account balances and positions
+- Secure OAuth-based authentication
+- Support for major brokers (Webull, Coinbase, etc.)
+- Automatic connection status tracking
+
+### Supported Brokers
+- Alpaca
+- Coinbase
+- E*Trade
+- Fidelity
+- Interactive Brokers
+- Kraken
+- Robinhood
+- Charles Schwab
+- TradeStation
+- Tradier
+- Trading212
+- Vanguard
+- Webull
+
+### Implementation Details
+
+#### User Registration Flow
+1. User initiates SnapTrade registration
+2. System creates SnapTrade user account
+3. User credentials (userId and userSecret) stored securely
+4. Redirect to broker connection interface
+
+#### Broker Connection Process
+1. User selects broker to connect
+2. System generates secure connection URL via SnapTrade
+3. User authenticates with broker
+4. System stores connection details and authorization ID
+5. Real-time connection status updates
+
+#### Data Model
+```typescript
+interface SnapTradeUser {
+  userId: string
+  userSecret: string
+  registeredAt: Date
+  brokerConnections: Array<{
+    accountId: string
+    authorizationId: string
+    brokerName: string
+    accountName: string
+    status: string
+  }>
+}
+```
+
+#### API Endpoints
+- `/api/snaptrade/register` - Register new SnapTrade user
+- `/api/snaptrade/connect` - Connect broker account
+- `/api/snaptrade/disconnect` - Disconnect broker account
+- `/api/snaptrade/connections` - List connected brokers
+
+### Environment Setup
+Add SnapTrade configuration to your `.env.local`:
+```env
+SNAPTRADE_CLIENT_ID=your_client_id
+SNAPTRADE_CONSUMER_KEY=your_consumer_key
+SNAPTRADE_API_BASE_URL=https://api.snaptrade.com
+SNAPTRADE_API_VERSION=v1
+```
+
+### Security Considerations
+- User secrets never stored in frontend
+- Secure OAuth flow for broker connections
+- Automatic session management
+- Connection status verification
+- Secure disconnection process
+
 ## Contributing
 
 1. Fork the repository

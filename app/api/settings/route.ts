@@ -29,9 +29,21 @@ export async function GET() {
         occupation: user.occupation || '',
       },
       social: {
-        twitter: user.social?.twitter || '',
-        linkedin: user.social?.linkedin || '',
-        tradingview: user.social?.tradingview || '',
+        twitter: user.social?.twitter || {
+          username: '',
+          profileUrl: '',
+          verified: false
+        },
+        linkedin: user.social?.linkedin || {
+          username: '',
+          profileUrl: '',
+          verified: false
+        },
+        tradingview: user.social?.tradingview || {
+          username: '',
+          profileUrl: '',
+          verified: false
+        },
       },
       notifications: {
         emailNotifications: user.notifications?.emailNotifications ?? true,
@@ -39,6 +51,12 @@ export async function GET() {
         communityUpdates: user.notifications?.communityUpdates ?? true,
         marketNews: user.notifications?.marketNews ?? false,
       },
+      snapTrade: {
+        userId: user.snapTrade?.userId || '',
+        userSecret: user.snapTrade?.userSecret || '',
+        registeredAt: user.snapTrade?.registeredAt || null,
+        brokerConnections: user.snapTrade?.brokerConnections || []
+      }
     })
   } catch (error) {
     console.error('Error fetching settings:', error)

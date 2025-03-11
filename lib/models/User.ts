@@ -46,6 +46,20 @@ export interface IUser extends Document {
     accountType: string
     connected: boolean
   }[]
+  // SnapTrade Integration
+  snapTrade?: {
+    userId: string
+    userSecret: string
+    registeredAt: Date
+    brokerConnections: {
+      brokerId: string
+      brokerName: string
+      accountId: string
+      accountName: string
+      connectedAt: Date
+      status: 'active' | 'disconnected'
+    }[]
+  }
   // Timestamps
   createdAt: Date
   updatedAt: Date
@@ -68,26 +82,27 @@ const userSchema = new Schema<IUser>({
       username: { type: String, default: '' },
       profileUrl: { type: String, default: '' },
       verified: { type: Boolean, default: false },
-      connectedAt: Date,
-      lastVerified: Date,
-      _id: false // Prevent Mongoose from creating _id for subdocuments
+      connectedAt: { type: Date, default: null },
+      lastVerified: { type: Date, default: null },
+      _id: false
     },
     linkedin: {
       username: { type: String, default: '' },
       profileUrl: { type: String, default: '' },
       verified: { type: Boolean, default: false },
-      connectedAt: Date,
-      lastVerified: Date,
+      connectedAt: { type: Date, default: null },
+      lastVerified: { type: Date, default: null },
       _id: false
     },
     tradingview: {
       username: { type: String, default: '' },
       profileUrl: { type: String, default: '' },
       verified: { type: Boolean, default: false },
-      connectedAt: Date,
-      lastVerified: Date,
+      connectedAt: { type: Date, default: null },
+      lastVerified: { type: Date, default: null },
       _id: false
-    }
+    },
+    _id: false
   },
   
   // Notification preferences with default values
@@ -141,6 +156,27 @@ const userSchema = new Schema<IUser>({
     accountType: String,
     connected: { type: Boolean, default: false },
   }],
+  
+  // SnapTrade Integration
+  snapTrade: {
+    userId: String,
+    userSecret: String,
+    registeredAt: Date,
+    brokerConnections: [{
+      brokerId: String,
+      brokerName: String,
+      accountId: String,
+      accountName: String,
+      connectedAt: Date,
+      status: {
+        type: String,
+        enum: ['active', 'disconnected'],
+        default: 'active'
+      },
+      _id: false
+    }],
+    _id: false
+  },
 }, {
   timestamps: true,
 })

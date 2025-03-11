@@ -129,6 +129,36 @@ export default function SettingsPage() {
     notifications: false,
   })
 
+  // Add effect to refresh connections when returning from SnapTrade
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const tab = searchParams.get('tab')
+    const status = searchParams.get('status')
+    const connectionId = searchParams.get('connection_id')
+    
+    // Only refresh if we're returning from SnapTrade with a SUCCESS status
+    if (tab === 'brokers' && status === 'SUCCESS' && connectionId && settings?.snapTrade?.userId) {
+      const refreshConnections = async () => {
+        try {
+          const connectionsResponse = await fetch('/api/snaptrade/connections')
+          if (connectionsResponse.ok) {
+            const { connections } = await connectionsResponse.json()
+            setSettings(prev => prev ? {
+              ...prev,
+              snapTrade: {
+                ...prev.snapTrade,
+                brokerConnections: connections
+              }
+            } : null)
+          }
+        } catch (error) {
+          console.error('Error refreshing connections:', error)
+        }
+      }
+      refreshConnections()
+    }
+  }, [settings?.snapTrade?.userId])
+
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -164,24 +194,7 @@ export default function SettingsPage() {
         const response = await fetch('/api/settings')
         if (!response.ok) throw new Error('Failed to fetch settings')
         const data = await response.json()
-        console.log('Fetched settings:', data)
-        console.log('SnapTrade data:', data.snapTrade)
         setSettings(data)
-        
-        // If user has SnapTrade configured, fetch latest connections
-        if (data.snapTrade?.userId) {
-          const connectionsResponse = await fetch('/api/snaptrade/connections')
-          if (connectionsResponse.ok) {
-            const { connections } = await connectionsResponse.json()
-            setSettings(prev => prev ? {
-              ...prev,
-              snapTrade: {
-                ...prev.snapTrade,
-                brokerConnections: connections
-              }
-            } : null)
-          }
-        }
         
         // Update form default values with fetched data
         profileForm.reset({
@@ -603,7 +616,7 @@ export default function SettingsPage() {
                                           'Content-Type': 'application/json',
                                         },
                                         body: JSON.stringify({
-                                          authorizationId: connection.authorizationId,
+                                          brokerName: broker.slug
                                         }),
                                       })
                                       
@@ -611,19 +624,17 @@ export default function SettingsPage() {
                                         throw new Error('Failed to disconnect account')
                                       }
                                       
-                                      // Refresh the connections list
-                                      const connectionsResponse = await fetch('/api/snaptrade/connections')
-                                      if (connectionsResponse.ok) {
-                                        const { connections } = await connectionsResponse.json()
-                                        setSettings(prev => prev ? {
-                                          ...prev,
-                                          snapTrade: {
-                                            ...prev.snapTrade,
-                                            brokerConnections: connections
-                                          }
-                                        } : null)
-                                        toast.success('Successfully disconnected account')
-                                      }
+                                      // Remove the connection from local state
+                                      setSettings(prev => prev ? {
+                                        ...prev,
+                                        snapTrade: {
+                                          ...prev.snapTrade,
+                                          brokerConnections: prev.snapTrade.brokerConnections.filter(
+                                            conn => conn.brokerName !== broker.slug
+                                          )
+                                        }
+                                      } : null)
+                                      toast.success('Successfully disconnected account')
                                     } catch (error) {
                                       console.error('Error disconnecting account:', error)
                                       toast.error('Failed to disconnect account')

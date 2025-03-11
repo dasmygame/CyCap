@@ -19,16 +19,37 @@ export async function POST(req: Request) {
       return new NextResponse('User not registered with SnapTrade', { status: 400 })
     }
 
-    const { authorizationId } = await req.json()
-    if (!authorizationId) {
-      return new NextResponse('Authorization ID is required', { status: 400 })
+    const { brokerName } = await req.json()
+    if (!brokerName) {
+      return new NextResponse('Broker name is required', { status: 400 })
     }
+
+    // Get current connections from SnapTrade
+    console.log('Fetching current connections from SnapTrade...')
+    const connections = await SnapTradeService.client.connections.listBrokerageAuthorizations({
+      userId: user.snapTrade.userId,
+      userSecret: user.snapTrade.userSecret,
+    })
+
+    console.log('Raw connections from SnapTrade:', JSON.stringify(connections.data, null, 2))
+
+    // Find the matching connection
+    const connection = connections.data?.find(conn => 
+      (conn.brokerage?.name || conn.broker?.name || '').toUpperCase() === brokerName
+    )
+
+    if (!connection || !connection.id) {
+      console.log(`No connection found for broker: ${brokerName}`)
+      return new NextResponse('Could not find connection for broker', { status: 400 })
+    }
+
+    console.log(`Found connection for ${brokerName}, authorization ID: ${connection.id}`)
 
     // Remove the brokerage authorization from SnapTrade
     await SnapTradeService.client.connections.removeBrokerageAuthorization({
       userId: user.snapTrade.userId,
       userSecret: user.snapTrade.userSecret,
-      authorizationId,
+      authorizationId: connection.id,
     })
 
     // Remove the connection from the user's document
@@ -36,7 +57,7 @@ export async function POST(req: Request) {
       { email: session.user.email },
       { 
         $pull: { 
-          'snapTrade.brokerConnections': { authorizationId }
+          'snapTrade.brokerConnections': { brokerName }
         }
       }
     )

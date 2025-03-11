@@ -52,12 +52,11 @@ export interface IUser extends Document {
     userSecret: string
     registeredAt: Date
     brokerConnections: {
-      brokerId: string
-      brokerName: string
       accountId: string
+      authorizationId: string
+      brokerName: string
       accountName: string
-      connectedAt: Date
-      status: 'active' | 'disconnected'
+      status: string
     }[]
   }
   // Timestamps
@@ -163,16 +162,11 @@ const userSchema = new Schema<IUser>({
     userSecret: String,
     registeredAt: Date,
     brokerConnections: [{
-      brokerId: String,
-      brokerName: String,
       accountId: String,
+      authorizationId: { type: String, required: true },
+      brokerName: String,
       accountName: String,
-      connectedAt: Date,
-      status: {
-        type: String,
-        enum: ['active', 'disconnected'],
-        default: 'active'
-      },
+      status: String,
       _id: false
     }],
     _id: false

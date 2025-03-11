@@ -5,14 +5,6 @@ import { connectDB } from '@/lib/db'
 import { User } from '@/lib/models/User'
 import { SnapTradeService } from '@/lib/services/snapTrade'
 
-interface BrokerConnection {
-  brokerName: string
-  accountName: string
-  status: string
-  authorizationId: string
-  accountId: string
-}
-
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)
@@ -53,31 +45,6 @@ export async function POST(req: Request) {
       console.error('Response data:', data)
       throw new Error('No redirect URL in response')
     }
-
-    // Get current connections from SnapTrade
-    const connections = await SnapTradeService.listBrokerageConnections(
-      user.snapTrade.userId,
-      user.snapTrade.userSecret
-    )
-
-    // Map all connections to our format
-    const formattedConnections: BrokerConnection[] = connections.map(conn => ({
-      accountId: conn.id || '',
-      authorizationId: conn.id || '',
-      brokerName: (conn.brokerage?.name || conn.broker?.name || 'Unknown').toUpperCase(),
-      accountName: conn.name || 'Unknown',
-      status: conn.status || 'Unknown'
-    }))
-
-    // Update user with all current connections
-    await User.updateOne(
-      { email: session.user.email },
-      { 
-        $set: { 
-          'snapTrade.brokerConnections': formattedConnections
-        }
-      }
-    )
 
     return NextResponse.json({ redirectUrl: data.redirectURI })
   } catch (error) {

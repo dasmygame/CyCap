@@ -54,45 +54,38 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const fetchPositions = async () => {
       try {
+        // Don't fetch if already loading or no session
+        if (!session?.user?.email) return
+        
         const response = await fetch('/api/snaptrade/positions')
         if (!response.ok) throw new Error('Failed to fetch positions')
         const data = await response.json()
         
-        // Separate crypto and stock positions
-        const stocks: Position[] = []
-        const crypto: Position[] = []
-        let stockValue = 0
-        let cryptoValue = 0
-        let stockGain = 0
-        let cryptoGain = 0
-
-        data.positions.forEach((position: Position) => {
-          if (position.securityType === 'CRYPTO') {
-            crypto.push(position)
-            cryptoValue += position.marketValue
-            cryptoGain += position.unrealizedPL
-          } else {
-            stocks.push(position)
-            stockValue += position.marketValue
-            stockGain += position.unrealizedPL
-          }
-        })
+        // Use the pre-separated positions from the API
+        const stocks = data.positions.stocks || []
+        const crypto = data.positions.crypto || []
+        
+        // Calculate totals
+        const stockValue = stocks.reduce((sum: number, p: Position) => sum + p.marketValue, 0)
+        const cryptoValue = crypto.reduce((sum: number, p: Position) => sum + p.marketValue, 0)
+        const stockGain = stocks.reduce((sum: number, p: Position) => sum + p.unrealizedPL, 0)
+        const cryptoGain = crypto.reduce((sum: number, p: Position) => sum + p.unrealizedPL, 0)
 
         setStockPositions(stocks)
         setCryptoPositions(crypto)
         setStockMetrics({
           totalValue: stockValue,
           dayChange: data.stockDayChange || 0,
-          dayChangePercent: (data.stockDayChange / stockValue) * 100 || 0,
+          dayChangePercent: stockValue ? (data.stockDayChange / stockValue) * 100 : 0,
           totalGain: stockGain,
-          totalGainPercent: (stockGain / stockValue) * 100
+          totalGainPercent: stockValue ? (stockGain / stockValue) * 100 : 0
         })
         setCryptoMetrics({
           totalValue: cryptoValue,
           dayChange: data.cryptoDayChange || 0,
-          dayChangePercent: (data.cryptoDayChange / cryptoValue) * 100 || 0,
+          dayChangePercent: cryptoValue ? (data.cryptoDayChange / cryptoValue) * 100 : 0,
           totalGain: cryptoGain,
-          totalGainPercent: (cryptoGain / cryptoValue) * 100
+          totalGainPercent: cryptoValue ? (cryptoGain / cryptoValue) * 100 : 0
         })
       } catch (error) {
         console.error('Error fetching positions:', error)
@@ -101,10 +94,10 @@ export default function AnalyticsPage() {
       }
     }
 
-    if (session) {
+    if (session?.user?.email && isLoading) {
       fetchPositions()
     }
-  }, [session])
+  }, [session?.user?.email, isLoading])
 
   if (status === "loading" || isLoading) {
     return (

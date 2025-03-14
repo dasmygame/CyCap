@@ -4,42 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import { User } from '@/lib/models/User'
 import { SnapTradeService } from '@/lib/services/snapTrade'
-
-interface SnapTradeSymbol {
-  symbol: {
-    id: string
-    symbol: string
-    description: string
-    currency: {
-      code: string
-      name: string
-      id: string
-    }
-    type: {
-      code: string
-      description: string
-    }
-  }
-}
-
-interface SnapTradePosition {
-  symbol: SnapTradeSymbol
-  units: number
-  price: number
-  market_value?: number
-  average_purchase_price?: number
-  open_pnl?: number
-  currency: {
-    code: string
-  }
-}
-
-interface SnapTradeAccount {
-  positions?: SnapTradePosition[]
-  total_value?: {
-    value: number
-  }
-}
+import { Position } from 'snaptrade-typescript-sdk'
 
 export async function GET() {
   try {
@@ -55,51 +20,109 @@ export async function GET() {
       return new NextResponse('User not registered with SnapTrade', { status: 400 })
     }
 
-    const holdings = await SnapTradeService.getUserHoldings(
-      user.snapTrade.userId,
-      user.snapTrade.userSecret
-    ) as SnapTradeAccount[]
+    const accountsResponse = await SnapTradeService.client.accountInformation.listUserAccounts({
+      userId: user.snapTrade.userId,
+      userSecret: user.snapTrade.userSecret
+    })
+    
+    const accounts = accountsResponse.data || []
+    const allPositions: Position[] = []
 
-    if (!holdings?.length) {
+    for (const account of accounts) {
+      try {
+        // Get account balances for Webull
+        if (account.institution_name === 'Webull') {
+          const balanceResponse = await SnapTradeService.client.accountInformation.getUserAccountBalance({
+            userId: user.snapTrade.userId,
+            userSecret: user.snapTrade.userSecret,
+            accountId: account.id
+          })
+          console.log('Webull account balances:', JSON.stringify(balanceResponse.data, null, 2))
+        }
+
+        const positionsResponse = await SnapTradeService.client.accountInformation.getUserAccountPositions({
+          userId: user.snapTrade.userId,
+          userSecret: user.snapTrade.userSecret,
+          accountId: account.id
+        })
+        
+        // Log Webull positions specifically
+        if (account.institution_name === 'Webull') {
+          console.log('Webull positions response:', JSON.stringify(positionsResponse.data, null, 2))
+        }
+        
+        if (positionsResponse.data?.length) {
+          allPositions.push(...positionsResponse.data)
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          return new NextResponse(error.message, { status: 500 })
+        }
+      }
+    }
+
+    if (!allPositions?.length) {
       return NextResponse.json({
-        positions: [],
+        positions: {
+          stocks: [],
+          crypto: []
+        },
         stockDayChange: 0,
         cryptoDayChange: 0,
         totals: { stock: 0, crypto: 0, total: 0 }
       })
     }
 
-    const positions = holdings.flatMap(account => {
-      return (account.positions || []).map(position => {
-        const marketValue = position.market_value || (position.units * position.price) || 0
-        const symbolObj = position.symbol?.symbol || position.symbol
-        const symbol = typeof symbolObj === 'object' ? symbolObj.symbol : symbolObj
-        const securityType = symbolObj?.type?.code === 'crypto' ? 'CRYPTO' : 'EQUITY'
-
-        return {
-          symbol,
-          quantity: position.units || 0,
-          marketValue,
-          averageCost: position.average_purchase_price || 0,
-          unrealizedPL: position.open_pnl || 0,
-          unrealizedPLPercent: position.average_purchase_price 
-            ? ((marketValue - (position.average_purchase_price * position.units)) / (position.average_purchase_price * position.units)) * 100 
-            : 0,
-          lastPrice: position.price || 0,
-          currency: position.currency?.code || 'USD',
-          securityType,
+    const processedPositions = allPositions.map(position => {
+      const units = position.units ?? 0
+      const price = position.price ?? 0
+      const marketValue = position.market_value ?? (units * price)
+      
+      let symbol = ''
+      if (typeof position.symbol === 'object' && position.symbol !== null) {
+        if ('symbol' in position.symbol) {
+          symbol = typeof position.symbol.symbol === 'string' 
+            ? position.symbol.symbol 
+            : position.symbol.symbol?.symbol || ''
         }
-      })
+      } else if (typeof position.symbol === 'string') {
+        symbol = position.symbol
+      }
+      
+      symbol = symbol.replace(/\.TO$/, '')
+      
+      const securityType = position.symbol?.symbol?.type?.code === 'crypto' ? 'CRYPTO' : 'STOCK'
+
+      const averagePurchasePrice = position.average_purchase_price ?? 0
+      const unrealizedPL = position.open_pnl ?? 0
+      const unrealizedPLPercent = averagePurchasePrice && units
+        ? ((marketValue - (averagePurchasePrice * units)) / (averagePurchasePrice * units)) * 100 
+        : 0
+
+      return {
+        symbol,
+        quantity: units,
+        marketValue,
+        averageCost: averagePurchasePrice,
+        unrealizedPL,
+        unrealizedPLPercent,
+        lastPrice: price,
+        currency: position.symbol?.currency?.code || 'USD',
+        securityType,
+      }
     })
 
-    const stockPositions = positions.filter(p => p.securityType !== 'CRYPTO')
-    const cryptoPositions = positions.filter(p => p.securityType === 'CRYPTO')
+    const stockPositions = processedPositions.filter(p => p.securityType === 'STOCK')
+    const cryptoPositions = processedPositions.filter(p => p.securityType === 'CRYPTO')
 
     const stockTotal = stockPositions.reduce((sum, p) => sum + p.marketValue, 0)
     const cryptoTotal = cryptoPositions.reduce((sum, p) => sum + p.marketValue, 0)
 
-    return NextResponse.json({
-      positions,
+    const response = {
+      positions: {
+        stocks: stockPositions,
+        crypto: cryptoPositions
+      },
       stockDayChange: stockTotal * 0.01,
       cryptoDayChange: cryptoTotal * 0.02,
       totals: {
@@ -107,9 +130,10 @@ export async function GET() {
         crypto: cryptoTotal,
         total: stockTotal + cryptoTotal
       }
-    })
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
-    console.error('Error fetching positions:', error)
     return new NextResponse(error instanceof Error ? error.message : 'Internal Server Error', { status: 500 })
   }
 } 
